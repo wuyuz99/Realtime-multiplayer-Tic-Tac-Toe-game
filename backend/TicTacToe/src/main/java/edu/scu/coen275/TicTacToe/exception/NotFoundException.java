@@ -1,8 +1,8 @@
 package edu.scu.coen275.TicTacToe.exception;
 
-public class GameNotExistException extends Exception {
+public class NotFoundException extends Exception {
     private String message;
-    public GameNotExistException(String message){
+    public NotFoundException(String message){
         this.message = message;
     }
 

@@ -35,4 +35,8 @@ public class GameStorage {
     public static boolean gameExists(String id) {
         return games.containsKey(id);
     }
+
+    public static Game getGame(String id) {
+        return games.get(id);
+    }
 }
