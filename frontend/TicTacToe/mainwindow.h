@@ -27,5 +27,6 @@ private:
 private slots:
     void CreateRoomPressed();
     void JoinRoomPressed();
+    void GamePlayPressed();
 };
 #endif // MAINWINDOW_H
