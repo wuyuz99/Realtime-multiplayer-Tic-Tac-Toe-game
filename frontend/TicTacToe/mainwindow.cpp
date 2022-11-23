@@ -160,6 +160,6 @@ void MainWindow::clearBoard() {
     displayBoard(board);
 }
 
-void GamePlayPressed() {
+void MainWindow::GamePlayPressed() {
     return;
 }
