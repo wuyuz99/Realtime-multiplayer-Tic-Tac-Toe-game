@@ -47,8 +47,9 @@ public class GameService {
         }
         int[][] board = game.getBoard();
         board[gamePlay.getCoordX()][gamePlay.getCoordY()] = gamePlay.getType().getValue();
-        checkWinner(board, gamePlay.getType());
-        game.setWinner(gamePlay.getType());
+        if(checkWinner(board, gamePlay.getType())) {
+            game.setWinner(gamePlay.getType());
+        }
         GameStorage.getInstance().setGame(game);
         return game;
     }
@@ -60,7 +61,7 @@ public class GameService {
             first = board[row][0];
             second = board[row][1];
             third = board[row][2];
-            if (first == value && first == second && second == third) {
+            if (first == ticToe.getValue() && first == value && first == second && second == third) {
                 return true;
             }
         }
@@ -68,20 +69,20 @@ public class GameService {
             first = board[0][col];
             second = board[1][col];
             third = board[2][col];
-            if (first == value && first == second && second == third) {
+            if (first == ticToe.getValue() && first == value && first == second && second == third) {
                 return true;
             }
         }
         first = board[0][0];
         second = board[1][1];
         third = board[2][2];
-        if (first == value && first == second && second == third) {
+        if (first == ticToe.getValue() && first == value && first == second && second == third) {
             return true;
         }
         first = board[0][2];
         second = board[1][1];
         third = board[2][0];
-        if (first == value && first == second && second == third) {
+        if (first == ticToe.getValue() && first == value && first == second && second == third) {
             return true;
         }
         return false;

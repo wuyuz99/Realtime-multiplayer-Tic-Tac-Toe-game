@@ -2,7 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QString>
 #include <QNetworkAccessManager>
+#include <QWebSocket>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -12,6 +14,10 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
     QNetworkAccessManager *netManager;
+    QWebSocket m_webSocket;
+    QString playerType;
+    QString gameId;
+    bool playerTurn;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -28,5 +34,8 @@ private slots:
     void CreateRoomPressed();
     void JoinRoomPressed();
     void GamePlayPressed();
+    void SocketConnected();
+    void SocketMsgRecved(QString message);
+    void SocketClosed();
 };
 #endif // MAINWINDOW_H

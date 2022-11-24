@@ -16,6 +16,9 @@ MainWindow::MainWindow(QWidget *parent)
     QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
     connect(hostButton, SIGNAL(released()), this, SLOT(CreateRoomPressed()));
     connect(joinButton, SIGNAL(released()), this, SLOT(JoinRoomPressed()));
+    connect(&m_webSocket, &QWebSocket::connected, this, &MainWindow::SocketConnected);
+    connect(&m_webSocket, &QWebSocket::disconnected, this, &MainWindow::SocketClosed);
+    m_webSocket.open(QUrl(QStringLiteral("ws://localhost:8080/gameplay")));
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             QString index = QString::number(3 * i + j);
@@ -25,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
     clearBoard();
+    playerTurn = false;
 }
 
 MainWindow::~MainWindow()
@@ -63,6 +67,11 @@ void MainWindow::CreateRoomPressed() {
             QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
             joinButton->setText("Clear");
             qDebug() << jsonObject;
+            clearBoard();
+            gameId = jsonObject["gameId"].toString();
+            playerType = "X";
+            playerTurn = true;
+
         }
         else{
             QString err = reply->errorString();
@@ -80,16 +89,11 @@ void MainWindow::JoinRoomPressed() {
         roomEdit->setText("");
         roomEdit->setReadOnly(false);
         button->setText("Join");
+        clearBoard();
         // TODO: clear board and disconnect from socket and enemy name
         return;
     }
     QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/join"));
-    /*{
-        "player": {
-            "login": "isaac2"
-        },
-        "gameId": "dbac21ab-0d04-4036-90bb-1968a419f70c"
-    }*/
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QJsonObject obj;
     QJsonObject player;
@@ -113,15 +117,10 @@ void MainWindow::JoinRoomPressed() {
             QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
             joinButton->setText("Clear");
             qDebug() << jsonObject;
-/*
-            QLabel *infoLabel = findChild<QLabel *>("infoLabel");
-            infoLabel->setText("Playing with " + jsonObject["player1"].toObject()["login"].toString());
-            QJsonArray arr = jsonObject["board"].toArray();
-            qDebug() << arr;
-            QVector<QVector<int>> board;
 
-            displayBoard(board);
-*/
+            gameId = jsonObject["gameId"].toString();
+            playerType = "O";
+            clearBoard();
             // set up connection for web socket
         }
         else{
@@ -161,5 +160,50 @@ void MainWindow::clearBoard() {
 }
 
 void MainWindow::GamePlayPressed() {
-    return;
+    if (!playerTurn) {
+        return;
+    }
+    QPushButton *button = (QPushButton *) sender();
+    int x, y;
+    QString button_name = button->objectName();
+    int index = button_name.last(1).toInt();
+    x = index / 3;
+    y = index % 3;
+    QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/gameplay"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonObject obj;
+    obj["type"] = playerType;
+    obj["coordX"] = x;
+    obj["coordY"] = y;
+    obj["gameId"] = gameId;
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson();
+    QNetworkReply* reply = netManager->post(request, data);
+    MainWindow::connect(reply, &QNetworkReply::finished, [=](){
+        if(reply->error() == QNetworkReply::NoError){
+            QString strReply = QString::fromUtf8(reply->readAll());
+            QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+            QJsonObject jsonObject = jsonResponse.object();
+            qDebug() << jsonObject;
+        }
+        else{
+            QString err = reply->errorString();
+            qDebug() << err;
+        }
+        reply->deleteLater();
+    });
+    playerTurn = false;
+}
+
+
+void MainWindow::SocketConnected() {
+    qDebug() << "web socket connected";
+}
+
+void MainWindow::SocketMsgRecved(QString message) {
+    qDebug() << "message received" << message;
+}
+
+void MainWindow::SocketClosed() {
+    qDebug() << "web socket closed";
 }
