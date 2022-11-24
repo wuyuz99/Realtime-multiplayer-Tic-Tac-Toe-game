@@ -17,8 +17,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(hostButton, SIGNAL(released()), this, SLOT(CreateRoomPressed()));
     connect(joinButton, SIGNAL(released()), this, SLOT(JoinRoomPressed()));
     connect(&m_webSocket, &QWebSocket::connected, this, &MainWindow::SocketConnected);
+    connect(&m_webSocket, &QWebSocket::textMessageReceived, this, &MainWindow::SocketMsgRecved);
+
     connect(&m_webSocket, &QWebSocket::disconnected, this, &MainWindow::SocketClosed);
-    m_webSocket.open(QUrl(QStringLiteral("ws://localhost:8080/gameplay")));
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             QString index = QString::number(3 * i + j);
@@ -66,12 +67,13 @@ void MainWindow::CreateRoomPressed() {
 
             QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
             joinButton->setText("Clear");
-            qDebug() << jsonObject;
             clearBoard();
             gameId = jsonObject["gameId"].toString();
             playerType = "X";
             playerTurn = true;
-
+            QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
+            qDebug() << ws_uri;
+            m_webSocket.open(QUrl(ws_uri));
         }
         else{
             QString err = reply->errorString();
@@ -102,7 +104,6 @@ void MainWindow::JoinRoomPressed() {
     obj["gameId"] = getGameId();
     QJsonDocument doc(obj);
     QByteArray data = doc.toJson();
-    qDebug() << data;
     QNetworkReply* reply = netManager->post(request, data);
     MainWindow::connect(reply, &QNetworkReply::finished, [=](){
         if(reply->error() == QNetworkReply::NoError){
@@ -116,12 +117,12 @@ void MainWindow::JoinRoomPressed() {
 
             QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
             joinButton->setText("Clear");
-            qDebug() << jsonObject;
 
             gameId = jsonObject["gameId"].toString();
             playerType = "O";
             clearBoard();
-            // set up connection for web socket
+            QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
+            m_webSocket.open(QUrl(ws_uri));
         }
         else{
             QString err = reply->errorString();
@@ -184,7 +185,6 @@ void MainWindow::GamePlayPressed() {
             QString strReply = QString::fromUtf8(reply->readAll());
             QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
             QJsonObject jsonObject = jsonResponse.object();
-            qDebug() << jsonObject;
         }
         else{
             QString err = reply->errorString();

@@ -23,6 +23,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @Slf4j
@@ -50,9 +51,11 @@ public class GameController {
         String roomId = game.getGameId();
         GameSessionMapper mapper = GameSessionMapper.getInstance();
         if (mapper.mapping.containsKey(roomId)) {
-            WebSocketSession session = mapper.mapping.get(roomId);
+            List<WebSocketSession> sessions = mapper.mapping.get(roomId);
             String jsonString = JSONMapper.writeValueAsString(game);
-            session.sendMessage(new TextMessage(jsonString));
+            for (WebSocketSession session: sessions) {
+                session.sendMessage(new TextMessage(jsonString));
+            }
         }
         return ResponseEntity.ok(game);
     }
