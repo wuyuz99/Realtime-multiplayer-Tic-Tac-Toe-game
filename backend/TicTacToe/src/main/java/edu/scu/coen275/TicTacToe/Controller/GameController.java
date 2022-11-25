@@ -1,5 +1,6 @@
 package edu.scu.coen275.TicTacToe.Controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.JSONPObject;
 import edu.scu.coen275.TicTacToe.dto.ConnectRequest;
@@ -38,16 +39,24 @@ public class GameController {
     }
 
     @PostMapping("/join")
-    public ResponseEntity<Game> join(@RequestBody ConnectRequest request) throws RoomFullException, NotFoundException {
+    public ResponseEntity<Game> join(@RequestBody ConnectRequest request) throws RoomFullException, NotFoundException, IOException {
         log.info("joining to room: {}", request);
-        return ResponseEntity.ok(gameService.connectToGame(request.getPlayer(), request.getGameId()));
+        Game game = gameService.connectToGame(request.getPlayer(), request.getGameId());
+        sendGame(game);
+        game = gameService.gameReady(request.getGameId());
+        return ResponseEntity.ok(game);
     }
 
     @PostMapping("/gameplay")
     public ResponseEntity<Game> gamePlay(@RequestBody GamePlay request) throws InvalidGameException, NotFoundException, IOException {
         log.info("gamePlay: {}", request);
-        ObjectMapper JSONMapper = new ObjectMapper();
         Game game = gameService.gamePlay(request);
+        sendGame(game);
+        return ResponseEntity.ok(game);
+    }
+
+    private void sendGame(Game game) throws IOException {
+        ObjectMapper JSONMapper = new ObjectMapper();
         String roomId = game.getGameId();
         GameSessionMapper mapper = GameSessionMapper.getInstance();
         if (mapper.mapping.containsKey(roomId)) {
@@ -57,6 +66,5 @@ public class GameController {
                 session.sendMessage(new TextMessage(jsonString));
             }
         }
-        return ResponseEntity.ok(game);
     }
 }

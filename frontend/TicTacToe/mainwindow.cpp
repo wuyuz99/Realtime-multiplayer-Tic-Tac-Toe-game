@@ -60,10 +60,10 @@ void MainWindow::displayBoard(QVector<QVector<int>> board) {
                 button->setText("");
                 button->setDisabled(false);
             } else if (board[i][j] == 1) {
-                button->setText("O");
+                button->setText("X");
                 button->setDisabled(true);
             } else if (board[i][j] == 2) {
-                button->setText("X");
+                button->setText("O");
                 button->setDisabled(true);
             }
         }
@@ -75,11 +75,10 @@ void MainWindow::clearBoard() {
     for (int i = 0; i < 3; ++i) {
         board.append(QVector<int> {0, 0, 0});
     }
-    qDebug() << board;
     displayBoard(board);
 }
 
-void MainWindow::prepareGame(QJsonObject jsonObject, bool isHost) {
+void MainWindow::prepareGame(QJsonObject jsonObject) {
     // set and lock edit
     QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
     roomEdit->setText(jsonObject["gameId"].toString());
@@ -94,16 +93,57 @@ void MainWindow::prepareGame(QJsonObject jsonObject, bool isHost) {
     // set member and clear board
     clearBoard();
     gameId = jsonObject["gameId"].toString();
-    playerType = isHost ? "O": "X";
-    playerTurn = isHost;
+    playerType = isHost ? "X": "O";
+    // playerTurn = isHost;
 
     // connect to socket
     QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
     m_webSocket.open(QUrl(ws_uri));
+    if (isHost)
+        displayStatusMessage(gameId);
 }
 
-void MainWindow::displayStatusMessage() {
+void MainWindow::displayStatusMessage(QString info) {
+    qDebug() << "displaying info: " << info;
+    QLabel *statusLabel = findChild<QLabel *>("statusLabel");
+    statusLabel->setWordWrap(true);
+    qDebug() << gameStatus;
+    if(gameStatus == "NEW") {
+        // info is the room number
+        QString text = "Hosting game %1, waiting for opponent";
+        text = text.arg(info);
+        statusLabel->setText(text);
+        return;
+    }
+    if(gameStatus == "STARTING" || gameStatus == "IN_PROGRESS") {
+        // info is the opponent name
+        QString text = "Opponent: %1";
+        text = text.arg(info);
+        if(playerTurn) {
+            text.append(", your turn");
+        } else {
+            text.append(", waiting for opponent");
+        }
+        statusLabel->setText(text);
+        return;
+    }
+    if(gameStatus == "FINISHED") {
+        QString text = "GameOver, ";
+        if (playerType == info) {
+            text.append("you won");
+        } else if (info == "") {
+            text.append("draw");
+        } else {
+            text.append("you lost");
+        }
+        statusLabel->setText(text);
+        return;
+    }
+}
 
+void MainWindow::clearStatusMessage() {
+    QLabel *statusLabel = findChild<QLabel *>("statusLabel");
+    statusLabel->setText("");
 }
 
 /*
@@ -122,7 +162,9 @@ void MainWindow::CreateRoomPressed() {
             QString strReply = QString::fromUtf8(reply->readAll());
             QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
             QJsonObject jsonObject = jsonResponse.object();
-            prepareGame(jsonObject, true);
+            gameStatus = "NEW";
+            isHost = true;
+            prepareGame(jsonObject);
         }
         else{
             QString err = reply->errorString();
@@ -145,6 +187,7 @@ void MainWindow::JoinRoomPressed() {
         nameEdit->setReadOnly(false);
         button->setText("Join");
         clearBoard();
+        clearStatusMessage();
         m_webSocket.close();
         return;
     }
@@ -165,8 +208,8 @@ void MainWindow::JoinRoomPressed() {
             QString strReply = QString::fromUtf8(reply->readAll());
             QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
             QJsonObject jsonObject = jsonResponse.object();
-
-            prepareGame(jsonObject, false);
+            isHost = false;
+            prepareGame(jsonObject);
         }
         else{
             QString err = reply->errorString();
@@ -219,9 +262,9 @@ void MainWindow::SocketConnected() {
 }
 
 void MainWindow::SocketMsgRecved(QString message) {
-    qDebug() << "message received" << message;
-    playerTurn = !playerTurn;
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
+    QString gameStatus = doc["status"].toString();
+    this->gameStatus = gameStatus;
     QJsonArray arr = doc["board"].toArray();
     QVector<QVector<int>> board;
     for (int i = 0; i < 3; ++i) {
@@ -231,10 +274,26 @@ void MainWindow::SocketMsgRecved(QString message) {
            int value = originalLine[j].toInt();
            line.append(value);
        }
-       qDebug() << "arr: " << arr[i];
        board.append(line);
     }
     displayBoard(board);
+    if (gameStatus == "FINISHED") {
+        QString winner = doc["winner"].toString();
+        qDebug() << "winner is " << winner;
+        displayStatusMessage(winner);
+        playerTurn = false;
+        return;
+    }
+    QString opponentField = isHost ? "player2" : "player1";
+    QString opponent = doc[opponentField].toObject()["login"].toString();
+    if (gameStatus == "IN_PROGRESS") {
+        playerTurn = !playerTurn;
+    }
+    if (gameStatus == "STARTING") {
+         playerTurn = isHost;
+    }
+    displayStatusMessage(opponent);
+
 }
 
 void MainWindow::SocketClosed() {

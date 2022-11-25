@@ -15,9 +15,11 @@ class MainWindow : public QMainWindow
     Q_OBJECT
     QNetworkAccessManager *netManager;
     QWebSocket m_webSocket;
+    bool isHost;
     QString playerType;
     QString gameId;
     bool playerTurn;
+    QString gameStatus;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -29,8 +31,9 @@ private:
     QString getGameId();
     void displayBoard(QVector<QVector<int>>board);
     void clearBoard();
-    void prepareGame(QJsonObject jsonObject, bool isHost);
-    void displayStatusMessage();
+    void prepareGame(QJsonObject jsonObject);
+    void displayStatusMessage(QString info);
+    void clearStatusMessage();
 
 private slots:
     void CreateRoomPressed();

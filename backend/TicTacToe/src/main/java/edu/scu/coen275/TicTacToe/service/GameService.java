@@ -16,6 +16,8 @@ public class GameService {
     public Game createGame(Player player) {
         Game game = new Game();
         game.setBoard(new int[3][3]);
+        game.setSteps(new GamePlay[9]);
+        game.setCurrStep(0);
         game.setGameId(UUID.randomUUID().toString());
         game.setPlayer1(player);
         game.setStatus(GameStatus.NEW);
@@ -32,6 +34,13 @@ public class GameService {
             throw new RoomFullException("Room full") ;
         }
         game.setPlayer2(player2);
+        game.setStatus(GameStatus.STARTING);
+        GameStorage.getInstance().setGame(game);
+        return game;
+    }
+
+    public Game gameReady(String gameId) {
+        Game game = GameStorage.getGame(gameId);
         game.setStatus(GameStatus.IN_PROGRESS);
         GameStorage.getInstance().setGame(game);
         return game;
@@ -45,10 +54,20 @@ public class GameService {
         if (game.getStatus().equals(GameStatus.FINISHED)) {
             throw new InvalidGameException("Game already finished");
         }
+        GamePlay[] steps = game.getSteps();
+        int curr_step = game.getCurrStep();
+        steps[curr_step] = gamePlay;
+        curr_step += 1;
+        game.setCurrStep(curr_step);
+        game.setSteps(steps);
         int[][] board = game.getBoard();
         board[gamePlay.getCoordX()][gamePlay.getCoordY()] = gamePlay.getType().getValue();
         if(checkWinner(board, gamePlay.getType())) {
             game.setWinner(gamePlay.getType());
+            game.setStatus(GameStatus.FINISHED);
+        }
+        if(game.getCurrStep() == 9) {
+            game.setStatus(GameStatus.FINISHED);
         }
         GameStorage.getInstance().setGame(game);
         return game;

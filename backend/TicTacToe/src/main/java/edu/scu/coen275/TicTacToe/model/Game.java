@@ -9,5 +9,7 @@ public class Game {
     private Player player2;
     private GameStatus status;
     private int [][] board;
+    private GamePlay[] steps;
+    private int currStep;
     private TicToe winner;
 }
