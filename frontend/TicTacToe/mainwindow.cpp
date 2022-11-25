@@ -12,13 +12,13 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     netManager = new QNetworkAccessManager(this);
+    // connect signals
     QPushButton *hostButton = MainWindow::findChild<QPushButton *>("hostButton");
     QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
     connect(hostButton, SIGNAL(released()), this, SLOT(CreateRoomPressed()));
     connect(joinButton, SIGNAL(released()), this, SLOT(JoinRoomPressed()));
     connect(&m_webSocket, &QWebSocket::connected, this, &MainWindow::SocketConnected);
     connect(&m_webSocket, &QWebSocket::textMessageReceived, this, &MainWindow::SocketMsgRecved);
-
     connect(&m_webSocket, &QWebSocket::disconnected, this, &MainWindow::SocketClosed);
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -28,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         }
     }
+    // set board and turn
     clearBoard();
     playerTurn = false;
 }
@@ -37,6 +38,9 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+/*
+ * helper functions
+ */
 QString MainWindow::getUserName() {
     QLineEdit *nameEdit = this->findChild<QLineEdit *>("nameEdit");
     return nameEdit->text();
@@ -45,91 +49,6 @@ QString MainWindow::getUserName() {
 QString MainWindow::getGameId() {
     QLineEdit *roomEdit = this->findChild<QLineEdit *>("roomEdit");
     return roomEdit->text();
-}
-
-void MainWindow::CreateRoomPressed() {
-    QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/host"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QJsonObject obj;
-    obj["login"] = getUserName();
-    QJsonDocument doc(obj);
-    QByteArray data = doc.toJson();
-    QNetworkReply *reply = netManager->post(request, data);
-    MainWindow::connect(reply, &QNetworkReply::finished, [=](){
-        if(reply->error() == QNetworkReply::NoError){
-            QString strReply = QString::fromUtf8(reply->readAll());
-            QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
-            QJsonObject jsonObject = jsonResponse.object();
-
-            QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
-            roomEdit->setText(jsonObject["gameId"].toString());
-            roomEdit->setReadOnly(true);
-
-            QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
-            joinButton->setText("Clear");
-            clearBoard();
-            gameId = jsonObject["gameId"].toString();
-            playerType = "X";
-            playerTurn = true;
-            QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
-            qDebug() << ws_uri;
-            m_webSocket.open(QUrl(ws_uri));
-        }
-        else{
-            QString err = reply->errorString();
-            qDebug() << err;
-        }
-        reply->deleteLater();
-    });
-}
-
-void MainWindow::JoinRoomPressed() {
-    QPushButton *button = (QPushButton *) sender();
-    QString operation = button->text();
-    if (operation == "Clear") {
-        QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
-        roomEdit->setText("");
-        roomEdit->setReadOnly(false);
-        button->setText("Join");
-        clearBoard();
-        // TODO: clear board and disconnect from socket and enemy name
-        return;
-    }
-    QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/join"));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QJsonObject obj;
-    QJsonObject player;
-    player["login"] = getUserName();
-    obj["player"] = player;
-    obj["gameId"] = getGameId();
-    QJsonDocument doc(obj);
-    QByteArray data = doc.toJson();
-    QNetworkReply* reply = netManager->post(request, data);
-    MainWindow::connect(reply, &QNetworkReply::finished, [=](){
-        if(reply->error() == QNetworkReply::NoError){
-            QString strReply = QString::fromUtf8(reply->readAll());
-            QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
-            QJsonObject jsonObject = jsonResponse.object();
-
-            QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
-            roomEdit->setText(jsonObject["gameId"].toString());
-            roomEdit->setReadOnly(true);
-
-            QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
-            joinButton->setText("Clear");
-
-            gameId = jsonObject["gameId"].toString();
-            playerType = "O";
-            clearBoard();
-            QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
-            m_webSocket.open(QUrl(ws_uri));
-        }
-        else{
-            QString err = reply->errorString();
-            qDebug() << err;
-        }
-        reply->deleteLater();
-    });
 }
 
 void MainWindow::displayBoard(QVector<QVector<int>> board) {
@@ -158,6 +77,103 @@ void MainWindow::clearBoard() {
     }
     qDebug() << board;
     displayBoard(board);
+}
+
+void MainWindow::prepareGame(QJsonObject jsonObject, bool isHost) {
+    // set and lock edit
+    QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
+    roomEdit->setText(jsonObject["gameId"].toString());
+    roomEdit->setReadOnly(true);
+    QLineEdit *nameEdit = findChild<QLineEdit *>("nameEdit");
+    nameEdit->setReadOnly(true);
+
+    // make button clear
+    QPushButton *joinButton = MainWindow::findChild<QPushButton *>("joinButton");
+    joinButton->setText("Clear");
+
+    // set member and clear board
+    clearBoard();
+    gameId = jsonObject["gameId"].toString();
+    playerType = isHost ? "O": "X";
+    playerTurn = isHost;
+
+    // connect to socket
+    QString ws_uri = "ws://localhost:8080/gameplay/" + gameId;
+    m_webSocket.open(QUrl(ws_uri));
+}
+
+void MainWindow::displayStatusMessage() {
+
+}
+
+/*
+ * Button Callbacks with HTTP request sends
+ */
+void MainWindow::CreateRoomPressed() {
+    QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/host"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonObject obj;
+    obj["login"] = getUserName();
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson();
+    QNetworkReply *reply = netManager->post(request, data);
+    MainWindow::connect(reply, &QNetworkReply::finished, [=](){
+        if(reply->error() == QNetworkReply::NoError){
+            QString strReply = QString::fromUtf8(reply->readAll());
+            QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+            QJsonObject jsonObject = jsonResponse.object();
+            prepareGame(jsonObject, true);
+        }
+        else{
+            QString err = reply->errorString();
+            qDebug() << err;
+        }
+        reply->deleteLater();
+    });
+}
+
+void MainWindow::JoinRoomPressed() {
+    QPushButton *button = (QPushButton *) sender();
+    QString operation = button->text();
+
+    // exit the room and clear the data
+    if (operation == "Clear") {
+        QLineEdit *roomEdit = findChild<QLineEdit *>("roomEdit");
+        roomEdit->setText("");
+        roomEdit->setReadOnly(false);
+        QLineEdit *nameEdit = findChild<QLineEdit *>("nameEdit");
+        nameEdit->setReadOnly(false);
+        button->setText("Join");
+        clearBoard();
+        m_webSocket.close();
+        return;
+    }
+
+    // join a room
+    QNetworkRequest request = QNetworkRequest(QUrl("http://localhost:8080/game/join"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QJsonObject obj;
+    QJsonObject player;
+    player["login"] = getUserName();
+    obj["player"] = player;
+    obj["gameId"] = getGameId();
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson();
+    QNetworkReply* reply = netManager->post(request, data);
+    MainWindow::connect(reply, &QNetworkReply::finished, [=](){
+        if(reply->error() == QNetworkReply::NoError){
+            QString strReply = QString::fromUtf8(reply->readAll());
+            QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
+            QJsonObject jsonObject = jsonResponse.object();
+
+            prepareGame(jsonObject, false);
+        }
+        else{
+            QString err = reply->errorString();
+            qDebug() << err;
+        }
+        reply->deleteLater();
+    });
 }
 
 void MainWindow::GamePlayPressed() {
@@ -192,9 +208,11 @@ void MainWindow::GamePlayPressed() {
         }
         reply->deleteLater();
     });
-    playerTurn = false;
 }
 
+/*
+ * socket callbacks to handle websocket messages
+ */
 
 void MainWindow::SocketConnected() {
     qDebug() << "web socket connected";
@@ -202,6 +220,21 @@ void MainWindow::SocketConnected() {
 
 void MainWindow::SocketMsgRecved(QString message) {
     qDebug() << "message received" << message;
+    playerTurn = !playerTurn;
+    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
+    QJsonArray arr = doc["board"].toArray();
+    QVector<QVector<int>> board;
+    for (int i = 0; i < 3; ++i) {
+       QVector<int> line;
+       QJsonArray originalLine =arr[i].toArray();
+       for (int j = 0; j < 3; ++j) {
+           int value = originalLine[j].toInt();
+           line.append(value);
+       }
+       qDebug() << "arr: " << arr[i];
+       board.append(line);
+    }
+    displayBoard(board);
 }
 
 void MainWindow::SocketClosed() {

@@ -29,6 +29,8 @@ private:
     QString getGameId();
     void displayBoard(QVector<QVector<int>>board);
     void clearBoard();
+    void prepareGame(QJsonObject jsonObject, bool isHost);
+    void displayStatusMessage();
 
 private slots:
     void CreateRoomPressed();
