@@ -91,6 +91,11 @@
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -103,6 +108,11 @@
            <horstretch>1</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
          </property>
          <property name="text">
           <string/>
@@ -117,6 +127,11 @@
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -129,6 +144,11 @@
            <horstretch>1</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
          </property>
          <property name="text">
           <string/>
@@ -143,6 +163,11 @@
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -155,6 +180,11 @@
            <horstretch>1</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
          </property>
          <property name="text">
           <string/>
@@ -169,6 +199,11 @@
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -182,6 +217,11 @@
            <verstretch>1</verstretch>
           </sizepolicy>
          </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -194,6 +234,11 @@
            <horstretch>1</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>30</pointsize>
+          </font>
          </property>
          <property name="text">
           <string/>
