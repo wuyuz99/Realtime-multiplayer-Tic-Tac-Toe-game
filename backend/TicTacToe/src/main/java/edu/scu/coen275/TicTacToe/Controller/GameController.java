@@ -59,8 +59,8 @@ public class GameController {
         ObjectMapper JSONMapper = new ObjectMapper();
         String roomId = game.getGameId();
         GameSessionMapper mapper = GameSessionMapper.getInstance();
-        if (mapper.mapping.containsKey(roomId)) {
-            List<WebSocketSession> sessions = mapper.mapping.get(roomId);
+        if (mapper.getMapping().containsKey(roomId)) {
+            List<WebSocketSession> sessions = mapper.getMapping().get(roomId);
             String jsonString = JSONMapper.writeValueAsString(game);
             for (WebSocketSession session: sessions) {
                 session.sendMessage(new TextMessage(jsonString));

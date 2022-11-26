@@ -8,6 +8,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 
 @Component
@@ -23,10 +25,11 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         String[] tokens = uri.split("/");
         String roomId = tokens[tokens.length - 1];
         GameSessionMapper mapper = GameSessionMapper.getInstance();
-        if (mapper.mapping.containsKey(roomId)) {
-            mapper.mapping.get(roomId).remove(session);
-            if (mapper.mapping.get(roomId).size() == 0) {
-                mapper.mapping.remove(roomId);
+        Map<String, List<WebSocketSession>> mapping = mapper.getMapping();
+        if (mapping.containsKey(roomId)) {
+            mapping.get(roomId).remove(session);
+            if (mapping.get(roomId).size() == 0) {
+                mapping.remove(roomId);
             }
         }
     }
@@ -38,11 +41,11 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         String[] tokens = uri.split("/");
         String roomId = tokens[tokens.length - 1];
         GameSessionMapper mapper = GameSessionMapper.getInstance();
-        if (!mapper.mapping.containsKey(roomId)) {
-            mapper.mapping.put(roomId, new ArrayList<>());
-
+        Map<String, List<WebSocketSession>> mapping = mapper.getMapping();
+        if (!mapping.containsKey(roomId)) {
+            mapping.put(roomId, new ArrayList<>());
         }
-        mapper.mapping.get(roomId).add(session);
+        mapping.get(roomId).add(session);
     }
 
     @Override
